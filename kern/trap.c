@@ -58,6 +58,9 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+#define MAX_IDT_NUM 256
+#define GATE_DPL 3
+extern uint32_t trap_handlers[];
 
 void
 trap_init(void)
@@ -65,6 +68,16 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	// init idt structure
+	int i = 0;
+	for ( ; i < MAX_IDT_NUM ; i++) {
+		SETGATE(idt[i], 0, GD_KT, trap_handlers[i], 0);
+	}
+
+	// init break point
+	SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handlers[T_BRKPT], GATE_DPL);
+	// init syscall
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handlers[T_SYSCALL], GATE_DPL);
 
 	// Per-CPU setup 
 	trap_init_percpu();
