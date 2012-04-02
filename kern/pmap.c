@@ -371,7 +371,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 
 	  pde = &pgdir[PDX(va)]; // va->pgdir
 	  if(*pde & PTE_P) { 
-	  	pgtab = (KADDR(PTE_ADDR(*pde)));
+	  	pgtable = (KADDR(PTE_ADDR(*pde)));
 	  } else {
 		//page table page not exist
 		if(!create || 
