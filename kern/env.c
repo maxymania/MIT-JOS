@@ -116,6 +116,18 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
+	int i;
+	for(i = 0; i < NENV; i++) {
+		envs[i].env_id = 0;
+		if (i == 0)
+			env_free_list = &envs[0];
+		else {
+			envs[i-1].env_link = &envs[i];
+			if (i == NENV - 1) {
+				envs[i].env_link = NULL;
+			}
+		}
+	}
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -207,6 +219,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Allocate and set up the page directory for this environment.
 	if ((r = env_setup_vm(e)) < 0)
+		
 		return r;
 
 	// Generate an env_id for this environment.
@@ -456,7 +469,16 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	// env_status : ENV_FREE, ENV_RUNNABLE, ENV_RUNNING, ENV_NOT_RUNNABLE
 
-	panic("env_run not yet implemented");
+	if (curenv->env_status == ENV_RUNNING)
+		curenv->env_status = ENV_RUNNABLE;
+	curenv = e;
+	e->env_status = ENV_RUNNING;
+	e->env_runs++;
+
+	env_pop_tf(&e->env_tf);
+
+	// panic("env_run not yet implemented");
 }
 
