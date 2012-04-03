@@ -152,7 +152,9 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
-	envs = (struct Env*) boot_alloc(sizeof( struct Env) * NENV);
+	uint32_t env_size = sizeof( struct Env) * NENV;
+	envs = (struct Env*) boot_alloc(env_size);
+	memset(envs, 0, env_size);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -191,7 +193,7 @@ mem_init(void)
 	// LAB 3: Your code here.
 	boot_map_region(kern_pgdir, 
 		  UENVS, 
-		  ROUNDUP((sizeof(struct Env) * NENV), PGSIZE),
+		  ROUNDUP(env_size, PGSIZE),
 		  PADDR(envs), 
 		  (PTE_U | PTE_P));
 
@@ -571,6 +573,18 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	pte_t *pte;
+	pde_t *pgdir;
+	pgdir = env->env_pgdir;
+
+	pte = pgdir_walk(pgdir, va + len/PGSIZE + 1, 0); 
+	if (!pte)
+		user_mem_check_addr = (uintptr_t) va;
+		return -E_FAULT;
+
+	if (!(*pte & (perm | PTE_P)))
+		user_mem_check_addr = (uintptr_t) va;
+		return -E_FAULT;
 
 	return 0;
 }
