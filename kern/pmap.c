@@ -71,8 +71,7 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
 // If n>0, allocates enough pages of contiguous physical memory to hold 'n'
 // bytes.  Doesn't initialize the memory.  Returns a kernel virtual address.
 //
-// If n==0, returns the address of the next free page without allocating
-// anything.
+// If n==0, returns the address of the next free page without allocating // anything.
 //
 // If we're out of memory, boot_alloc should panic.
 // This function may ONLY be used during initialization,
@@ -90,7 +89,9 @@ boot_alloc(uint32_t n)
 	// to any kernel code or global variables.
 	if (!nextfree) {
 		extern char end[];
-		nextfree = ROUNDUP((char *) end, PGSIZE);
+		result = nextfree = ROUNDUP((char *) end, PGSIZE);
+	} else {
+		result = nextfree;
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -99,7 +100,9 @@ boot_alloc(uint32_t n)
 	//
 	// LAB 2: Your code here.
 
-	return NULL;
+	nextfree += ((ROUNDUP(n, PGSIZE)) >> PGSHIFT) * PGSIZE;
+
+	return result;
 }
 
 // Set up a two-level page table:
