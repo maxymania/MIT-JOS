@@ -129,6 +129,7 @@ env_init(void)
 			env_free_list = &envs[0];
 		else {
 			envs[i-1].env_link = &envs[i];
+			// FIXME: this part can be removed, because memset zero 			// after alloc envs
 			if (i == NENV - 1) {
 				envs[i].env_link = NULL;
 			}
@@ -198,8 +199,9 @@ env_setup_vm(struct Env *e)
 
 	// LAB 3: Your code here.
 	e->env_pgdir = page2kva(p);
-	// Question: why need to memmove ?
-	// memmove(e->env_pgdir, kern_pgdir, PGSIZE);
+	// Question: why need to memmove ? 
+	// equal to copy_to_user
+	memmove(e->env_pgdir, kern_pgdir, PGSIZE);
 	p->pp_ref++;
 
 	// UVPT maps the env's own page table read-only.
