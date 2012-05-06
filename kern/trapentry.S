@@ -316,7 +316,7 @@ _alltraps:
 
 	movw $GD_KD, %ax
 	movw %ax, %ds
-	movw %ax, %es
+	movw %ax, %es 
 
         pushl %esp  /* trap(%esp) */
         call trap
