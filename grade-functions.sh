@@ -38,7 +38,9 @@ run () {
 		qemuextra="-S $qemugdb"
 	fi
 
-	qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -monitor null -no-reboot $qemuextra"
+	#qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -monitor null -no-reboot $qemuextra"
+	# changed to following line, origin file show no jos.out error 
+	qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -no-reboot"
 	if $verbose; then
 		echo $qemucommand 1>&2
 	fi
@@ -64,7 +66,8 @@ run () {
 			echo "br *0x$brkaddr"
 			echo c
 		) > jos.in
-		gdb -batch -nx -x jos.in > /dev/null 2>&1
+		#comment this to save chek time
+		#gdb -batch -nx -x jos.in > /dev/null 2>&1
 
 		# Make sure QEMU is dead.  On OS X, exiting gdb
 		# doesn't always exit QEMU.
