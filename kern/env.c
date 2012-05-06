@@ -117,6 +117,8 @@ env_init(void)
 	// Set up envs array
 	// LAB 3: Your code here.
 	int i;
+#define LOOP_FIRST_VERSION 1
+#ifdef LOOP_FIRST_VERSION
 	for(i = 0; i < NENV; i++) {
 		envs[i].env_id = 0;
 		envs[i].env_parent_id = 0;
@@ -129,12 +131,26 @@ env_init(void)
 			env_free_list = &envs[0];
 		else {
 			envs[i-1].env_link = &envs[i];
-			// FIXME: this part can be removed, because memset zero 			// after alloc envs
+			// FIXME: this part can be removed, because memset zero
+			// after alloc envs
 			if (i == NENV - 1) {
 				envs[i].env_link = NULL;
 			}
 		}
 	}
+#else // loop others version
+	for(i=NENV-1; i>=0; i--) {
+		envs[i].env_link = env_free_list;
+		envs[i].env_id = 0;
+		envs[i].env_parent_id = 0;
+		envs[i].env_type = ENV_TYPE_IDLE;
+		envs[i].env_status = 0;
+		envs[i].env_runs = 0;
+		envs[i].env_pgdir = NULL;
+		env_free_list = &envs[i];
+		//cprintf("add env[%d]\n", i);
+	}
+#endif
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -531,6 +547,6 @@ env_run(struct Env *e)
 
 	lcr3(PADDR(e->env_pgdir));
 
-	env_pop_tf(&e->env_tf);
+	env_pop_tf(&(e->env_tf));
 }
 
