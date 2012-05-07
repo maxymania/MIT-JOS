@@ -67,8 +67,8 @@ run () {
 			echo "br *0x$brkaddr"
 			echo c
 		) > jos.in
-		#comment following line to save your time
-		#Ben: it will take long time about 13.5s in my working environment.
+		#Ben: comment 'gdb -batch ...' to avoid block long time
+		#it will take long time about 13.5s in my working environment.
 		#gdb -batch -nx -x jos.in > /dev/null 2>&1
 
 		# Make sure QEMU is dead.  On OS X, exiting gdb
