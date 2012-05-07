@@ -322,9 +322,9 @@ _alltraps:
         call trap
 
 	/* 
-	# env_pop_tf done by iret, so never run following code
+	# Ben: env_pop_tf() done by iret, so never run following code
 	# try to comment out following line, make grade ok.
-	# so it meaning 
+	# for reference xv6 code, we should refine code from env_pop_tf to here.
 	addl $4, %esp
 	popal
 	pop %es
