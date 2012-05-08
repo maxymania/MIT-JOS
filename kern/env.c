@@ -504,8 +504,9 @@ env_pop_tf(struct Trapframe *tf)
 		"\tpopl %%es\n"
 		"\tpopl %%ds\n"
 		"\taddl $0x8,%%esp\n" /* skip tf_trapno and tf_errcode */
-		"\tiret"
+		"\tiret" /* Ben: use cs, eip from stack */
 		: : "g" (tf) : "memory");
+	/* Ben: if your stack broken, you got panic */
 	panic("iret failed");  /* mostly to placate the compiler */
 }
 
