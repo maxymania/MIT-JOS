@@ -38,6 +38,7 @@ run () {
 		qemuextra="-S $qemugdb"
 	fi
 
+	# FIXME: try to use qemu version 13 for -monitor null not working.
 	#qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -monitor null -no-reboot $qemuextra"
 	# changed to following line, origin file show no jos.out error 
 	qemucommand="$qemu -nographic $qemuopts -serial file:jos.out -no-reboot"
