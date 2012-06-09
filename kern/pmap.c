@@ -328,7 +328,8 @@ page_init(void)
 	size_t i;
 	physaddr_t pa;
 	for (i = 0; i < npages; i++) {
-	    if (i==0) {
+	    if (i==0 ||
+ 	    i == PGNUM(MPENTRY_PADDR)) {
 	      pages[i].pp_ref = 1;
 	      pages[i].pp_link = NULL;
 	    } else if (i<npages_basemem) {
