@@ -210,11 +210,12 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, 
+	/* becase same range for percpu_kstacks[0] in mem_init_mp() so comment out this line */
+	/* boot_map_region(kern_pgdir, 
 		  (KSTACKTOP-KSTKSIZE), 
 		  KSTKSIZE,
 		  PADDR(bootstack), 
-		  (PTE_W | PTE_P));
+		  (PTE_W | PTE_P)); */
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -266,6 +267,7 @@ mem_init(void)
 static void
 mem_init_mp(void)
 {
+	uint32_t n, va, pa;
 	// Create a direct mapping at the top of virtual address space starting
 	// at IOMEMBASE for accessing the LAPIC unit using memory-mapped I/O.
 	boot_map_region(kern_pgdir, IOMEMBASE, -IOMEMBASE, IOMEM_PADDR, PTE_W);
@@ -287,6 +289,16 @@ mem_init_mp(void)
 	//
 	// LAB 4: Your code here:
 
+	/* becase same range for percpu_kstacks[0] in 214, so comment out it.*/
+	// pte_t *pte;
+	for (n = 0; n < NCPU; n++) {
+		va = KSTACKTOP - (KSTKSIZE + KSTKGAP) * n - KSTKSIZE;
+		pa = PADDR(percpu_kstacks[n]);
+		boot_map_region(kern_pgdir, va, KSTKSIZE, pa, PTE_P|PTE_W);
+		// for debuging
+		// pte = pgdir_walk(kern_pgdir, (void *)va, 0);
+		// cprintf("va 0x%x, pa 0x%x\n", va, pa);
+	}
 }
 
 // --------------------------------------------------------------
