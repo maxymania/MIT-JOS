@@ -142,8 +142,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
-		if(user_mem_check(curenv, usd, sizeof(struct UserStabData), PTE_U | PTE_P))
-			return -1; 
 
 		stabs = usd->stabs;
 		stab_end = usd->stab_end;
@@ -151,10 +149,7 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		stabstr_end = usd->stabstr_end;
 
 		// Make sure the STABS and string table memory is valid.
-		// LAB 3: Your code here. 
-		if ((user_mem_check(curenv, stabs, stab_end - stabs, PTE_U | PTE_P)) ||
-		    (user_mem_check(curenv, stabstr, stabstr_end - stabstr, PTE_U | PTE_P)) )
-			return -1; 
+		// LAB 3: Your code here.
 	}
 
 	// String table validity checks
@@ -172,10 +167,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	stab_binsearch(stabs, &lfile, &rfile, N_SO, addr);
 	if (lfile == 0)
 		return -1;
-
-	info->eip_file = stabstr + stabs[lfile].n_strx;
-	if (info->eip_file[0] == '{') 
-		info->eip_file = stabstr + stabs[lfile+1].n_strx;
 
 	// Search within that file's stabs for the function definition
 	// (N_FUN).
@@ -212,14 +203,8 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	There's a particular stabs type used for line numbers.
 	//	Look at the STABS documentation and <inc/stab.h> to find
 	//	which one.
-	
-	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
-	if (rline >= lline)
-		info->eip_line = stabs[lline].n_desc;
+	// Your code here.
 
-	cprintf("\n\t%s:%d: %.*s+%d", info->eip_file, info->eip_line,
-	     info->eip_fn_namelen, info->eip_fn_name,
-	     addr == info->eip_fn_addr ? 0:addr);
 	
 	// Search backwards from the line number for the relevant filename
 	// stab.
