@@ -279,6 +279,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// TBD: gain 10+ percent of performance improvement 
 	// by using goto-label-array.
 	switch(syscallno) {
+	case SYS_yield:
+		sys_yield();
+		break;
 	case SYS_cputs:
 		sys_cputs((char *) a1, a2);
 		break;

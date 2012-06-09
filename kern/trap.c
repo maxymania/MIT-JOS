@@ -120,7 +120,7 @@ trap_init_percpu(void)
 	// when we trap to the kernel.
 	struct Taskstate *pts = &thiscpu->cpu_ts;
 	uint32_t cid = cpunum();
-	pts->ts_esp0 = KSTACKTOP - (KSTKSIZE + cid);
+	pts->ts_esp0 = KSTACKTOP - (KSTKSIZE + KSTKGAP) * cid;
 	pts->ts_ss0 = GD_KD;
 
 	// Initialize the TSS slot of the gdt.
