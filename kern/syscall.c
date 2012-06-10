@@ -411,7 +411,8 @@ sys_ipc_recv(void *dstva)
 
 	curenv->env_tf.tf_regs.reg_eax = 0;
 	curenv->env_status = ENV_NOT_RUNNABLE;
-	sched_yield();
+	// should not call schedule_yield because of trap call by timer
+	// sched_yield();
 	return 0;
 }
 
