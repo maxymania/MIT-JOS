@@ -97,9 +97,9 @@ sys_exofork(void)
 		return r;
 	}
 
-	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_tf = thiscpu->cpu_env->env_tf;
 	e->env_tf.tf_regs.reg_eax = 0;
+	e->env_status = ENV_NOT_RUNNABLE;
 
 	return e->env_id;
 }
@@ -126,11 +126,11 @@ sys_env_set_status(envid_t envid, int status)
 	      	&& status != ENV_NOT_RUNNABLE) 
 			return -E_INVAL;
 
-	if (!envid2env(envid, &e, 1)) {
-		e->env_status = status;
-		return 0;
-	}
-	return -E_BAD_ENV;
+	if (envid2env(envid, &e, 1))
+		return -E_BAD_ENV;
+
+	e->env_status = status;
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct

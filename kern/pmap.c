@@ -525,6 +525,11 @@ page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 
 	if (*pte & PTE_P) {
 		if (PTE_ADDR(*pte) == page2pa(pp)) {
+			if (perm & PTE_COW) {
+				*pte &= ~PTE_W;
+			} else if (perm & PTE_W) {
+				*pte &= ~PTE_COW;
+			}
 			*pte |= perm;
 			/* pp->pp_ref++; */ /* base on the check function, should not increase reference count */
 			return 0;
