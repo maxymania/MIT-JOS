@@ -359,7 +359,7 @@ page_fault_handler(struct Trapframe *tf)
 		    && tf->tf_esp <= UXSTACKTOP - 1) {
 			dststack = (void *)(tf->tf_esp - sizeof(struct UTrapframe) - 4);
 		} else {
-			dststack = (void *)(tf->tf_esp - sizeof(struct UTrapframe));
+			dststack = (void *)(UXSTACKTOP - sizeof(struct UTrapframe));
 		}
 
 		user_mem_assert(curenv, dststack, sizeof(struct UTrapframe), PTE_P | PTE_W | PTE_U);
