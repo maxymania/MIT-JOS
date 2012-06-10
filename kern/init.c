@@ -69,6 +69,7 @@ i386_init(void)
 	ENV_CREATE(user_yield, ENV_TYPE_USER);
 	ENV_CREATE(user_yield, ENV_TYPE_USER);
 	ENV_CREATE(user_yield, ENV_TYPE_USER);
+	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
 
 #endif // TEST*
 
