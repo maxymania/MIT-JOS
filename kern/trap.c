@@ -223,6 +223,10 @@ trap_dispatch(struct Trapframe *tf)
 					Mregs(tf,edi),
 					Mregs(tf,esi));
 		break;
+	case (IRQ_OFFSET + IRQ_TIMER):
+		lapic_eoi();
+		sched_yield();
+		break;
 	default:
 		print_trapframe(tf);
 		if (tf->tf_cs == GD_KT) {
