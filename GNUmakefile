@@ -126,6 +126,9 @@ include lib/Makefrag
 include user/Makefrag
 include fs/Makefrag
 
+# Note: qemu 0.12.5 no option -D
+# QEMUOPTS = -hda $(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT) -D qemu.log
+QEMUOPTS = -hda $(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT) $(QEMUEXTRA)
 
 CPUS ?= 1
 
