@@ -285,6 +285,8 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	if (page_insert(de->env_pgdir, page, dstva, perm))
 		return -E_NO_MEM;
 
+
+
 	return 0;
 }
 

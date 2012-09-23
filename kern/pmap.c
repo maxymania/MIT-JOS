@@ -519,25 +519,23 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 int
 page_insert(pde_t *pgdir, struct Page *pp, void *va, int perm)
 {
-	pte_t *pte = pgdir_walk(pgdir, va, 1);
-	if (!pte)
-		return -E_NO_MEM;
+	pte_t *pte = pgdir_walk(pgdir, va, 0);
+    physaddr_t ppa = page2pa(pp);
 
-	if (*pte & PTE_P) {
-		if (PTE_ADDR(*pte) == page2pa(pp)) {
-			if (perm & PTE_COW) {
-				*pte &= ~PTE_W;
-			} else if (perm & PTE_W) {
-				*pte &= ~PTE_COW;
-			}
-			*pte |= perm;
-			/* pp->pp_ref++; */ /* base on the check function, should not increase reference count */
-			return 0;
-		} 
-		page_remove(pgdir, va);
-	}
+    if (pte != NULL) {
+        // for page alreay mapped
+        if (*pte & PTE_P)
+            page_remove(pgdir, va); // also invalidates tlb
+        if (page_free_list == pp) 
+            page_free_list = page_free_list->pp_link; 
+    } else {
+	    pte = pgdir_walk(pgdir, va, 1);
+	    if (!pte)
+		    return -E_NO_MEM;
+    }
 	*pte = page2pa(pp) | perm | PTE_P;
 	pp->pp_ref++;
+    tlb_invalidate(pgdir, va);
 	return 0;
 }
 
