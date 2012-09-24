@@ -92,7 +92,6 @@ flush_block(void *addr)
 	// LAB 5: Your code here.
     envid = thisenv->env_id;
     if (!va_is_mapped(addr) || !va_is_dirty(addr)) {
-	    cprintf("block is no change \n");
         return;
     }
 
