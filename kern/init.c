@@ -69,7 +69,7 @@ i386_init(void)
 #else
 	// Touch all you want.
 	// ENV_CREATE(user_writemotd, ENV_TYPE_USER);
-	// ENV_CREATE(user_testfile, ENV_TYPE_USER);
+	ENV_CREATE(user_testfile, ENV_TYPE_USER);
 	// ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif // TEST*
 

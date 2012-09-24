@@ -90,8 +90,10 @@ openfile_lookup(envid_t envid, uint32_t fileid, struct OpenFile **po)
 	struct OpenFile *o;
 
 	o = &opentab[fileid % MAXOPEN];
-	if (pageref(o->o_fd) == 1 || o->o_fileid != fileid)
+    // cprintf("openfile_loopkup 0x%08x o_fd.pp_ref=%08x\n", o, pageref(o->o_fd));
+	if (pageref(o->o_fd) == 1 || o->o_fileid != fileid) {
 		return -E_INVAL;
+    }
 	*po = o;
 	return 0;
 }
@@ -202,7 +204,8 @@ serve_read(envid_t envid, union Fsipc *ipc)
 {
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
-    size_t r;
+    int r;
+    size_t nbytes;
     struct OpenFile* o;
 
 	if (debug)
@@ -223,12 +226,12 @@ serve_read(envid_t envid, union Fsipc *ipc)
         return r;
     }
 
-    r = file_read(o->o_file, (void *) ret->ret_buf, MIN(req->req_n, PGSIZE), o->o_fd->fd_offset);
-    if (r >= 0) {
-        o->o_fd->fd_offset += r;
+    nbytes = file_read(o->o_file, (void *) ret->ret_buf, MIN(req->req_n, PGSIZE), o->o_fd->fd_offset);
+    if (nbytes > 0) {
+        o->o_fd->fd_offset += nbytes;
     }
 
-    return r;
+    return nbytes;
 }
 
 // Write req->req_n bytes from req->req_buf to req_fileid, starting at

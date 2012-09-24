@@ -209,11 +209,12 @@ trap_dispatch(struct Trapframe *tf)
 	switch(tf->tf_trapno) {
 	case T_PGFLT:
 		page_fault_handler(tf);
-		break;
+        return;
 	case T_BRKPT:
+	case T_DEBUG:
 		print_trapframe(tf);
 		monitor(tf);
-		break;
+        return;
 	case T_SYSCALL:
 		tf->tf_regs.reg_eax = syscall(
 					Mregs(tf,eax),
@@ -222,19 +223,21 @@ trap_dispatch(struct Trapframe *tf)
 					Mregs(tf,ebx),
 					Mregs(tf,edi),
 					Mregs(tf,esi));
-		break;
-	case (IRQ_OFFSET + IRQ_TIMER):
+	    return;	
+    };
+
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
 		lapic_eoi();
 		sched_yield();
-		break;
-	default:
-		print_trapframe(tf);
-		if (tf->tf_cs == GD_KT) {
-			panic("unhandled trap in kernel");
-			return ;
-		}
-		env_destroy(curenv);
-	}
+        return;
+    }
+
+    print_trapframe(tf);
+    if (tf->tf_cs == GD_KT) {
+        panic("unhandled trap in kernel");
+    } else {
+        env_destroy(curenv);
+    }
 }
 
 void

@@ -96,7 +96,7 @@ flush_block(void *addr)
     }
 
     if (ide_write(blockno*BLKSECTS, blkaddr, BLKSECTS) < 0)
-        panic("flush_block: failed to write disk block");
+       panic("flush_block: failed to write disk block");
 
     if (sys_page_map(envid, blkaddr, envid, blkaddr, PTE_SYSCALL) < 0)
        panic("flush_block: failed to mark disk page as non dirty\n");
