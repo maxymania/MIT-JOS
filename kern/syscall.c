@@ -12,6 +12,7 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 #include <kern/time.h>
+#include <kern/e1000.h>
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -168,7 +169,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	struct Env *e;
 	// LAB 4: Your code here.
-	if (envid2env(envid, &e, 1) != 0)
+	if (envid2env(envid, &e, 1) <= 0)
 		return -E_BAD_ENV;
 
 	if (!func)
@@ -176,6 +177,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 
 	e->env_pgfault_upcall = func;
 	
+	//user_mem_assert(e, func, 4, 0);
 	return 0;
 }
 
@@ -292,7 +294,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 		return -E_INVAL;
 	}
 	
-	if (page_insert(de->env_pgdir, page, dstva, perm))
+	if (page_insert(de->env_pgdir, page, dstva, perm)<0)
 		return -E_NO_MEM;
 
 
@@ -443,11 +445,51 @@ sys_ipc_recv(void *dstva)
 }
 
 // Return the current time.
-static int
+static unsigned int
 sys_time_msec(void)
 {
 	// LAB 6: Your code here.
     return time_msec();
+}
+
+static int
+sys_net_try_send(char *data, int len)
+{
+	if ((uintptr_t) data >= UTOP)
+		return -E_INVAL;
+
+	return e1000_transmit(data, len);
+}
+
+static int
+sys_net_try_receive(char *data, int *len)
+{
+	if ((uintptr_t) data >= UTOP)
+		return -E_INVAL;
+
+	*len = e1000_receive(data);
+	if (*len > 0)
+		return 0;
+	return *len;
+}
+
+static int
+sys_get_mac(uint32_t *low, uint32_t *high)
+{
+	*low = e1000[E1000_RAL];
+	*high = e1000[E1000_RAH] & 0xffff;
+	return 0;
+}
+
+static int
+sys_env_lease(struct Env *src, envid_t *dst_id)
+{
+	int r;
+	struct Env *e;
+
+	r = env_alloc(&e, src->env_parent_id);
+	if (r < 0)
+		return r;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -490,13 +532,20 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 	case SYS_ipc_recv:
 		return sys_ipc_recv((void *)a1);
-    case SYS_env_set_trapframe:
-        return sys_env_set_trapframe(a1, (struct Trapframe *)a2);
-    case SYS_time_msec:
-        return sys_time_msec();
+	case SYS_time_msec:
+		return sys_time_msec();
+	case SYS_net_try_send:
+		return sys_net_try_send((char *) a1, (int) a2);
+	case SYS_net_try_receive:
+		return sys_net_try_receive((char *) a1, (int *) a2);
+	case SYS_get_mac:
+		return sys_get_mac((uint32_t *) a1, (uint32_t *) a2);
+	case SYS_env_set_trapframe:
+		return sys_env_set_trapframe(a1, (struct Trapframe *)a2);
 	default:
 		cprintf("Error syscall(%u)\n", syscallno);
 		panic("syscall not implemented");
+		return -E_INVAL;
 	}
 	return 0;
 }

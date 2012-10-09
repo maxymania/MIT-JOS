@@ -316,9 +316,9 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-	if ((tf->tf_cs & 0x1) == 0) {
+	if (tf->tf_cs == GD_KT) {
 	      print_trapframe(tf);
-	      panic("Kernel page fault");
+	      panic("kernel page fault va %08x\n", fault_va);
 	}
 
 	// We've already handled kernel-mode exceptions, so if we get here,
@@ -356,43 +356,41 @@ page_fault_handler(struct Trapframe *tf)
 	if (!curenv->env_pgfault_upcall)
 		goto userfault;
 
-	if (USTACKTOP < tf->tf_esp && tf->tf_esp < UXSTACKTOP - PGSIZE)
+	user_mem_assert(curenv,(void *)(UXSTACKTOP -4), 4, 0);
+
+	uintptr_t exstack;
+	struct UTrapframe *utf;
+
+ 	if ( tf->tf_esp <= UXSTACKTOP-1 && tf->tf_esp >=  UXSTACKTOP - PGSIZE)
+		exstack = tf->tf_esp - 4; 
+	else
+		exstack = tf->tf_esp;
+
+	if ((exstack - sizeof(struct UTrapframe)) < UXSTACKTOP-PGSIZE) {
 		goto userfault;
-
-	{
-		void *dststack;
-		// reference: inc/trap.h: 59 ~ 86
-		struct UTrapframe utf;
-		utf.utf_fault_va = fault_va;
-		utf.utf_err = tf->tf_err;
-		utf.utf_regs = tf->tf_regs;
-		utf.utf_eip = tf->tf_eip;
-		utf.utf_eflags = tf->tf_eflags;
-		utf.utf_esp = tf->tf_esp;
-
-		if (UXSTACKTOP - PGSIZE <= tf->tf_esp
-		    && tf->tf_esp <= UXSTACKTOP - 1) {
-			dststack = (void *)(tf->tf_esp - sizeof(struct UTrapframe) - 4);
-		} else {
-			dststack = (void *)(UXSTACKTOP - sizeof(struct UTrapframe));
-		}
-
-		user_mem_assert(curenv, dststack, sizeof(struct UTrapframe), PTE_P | PTE_W | PTE_U);
-		memmove(dststack, (void *)&utf, sizeof(struct UTrapframe));
-		tf->tf_eip = (uint32_t) curenv->env_pgfault_upcall;
-		tf->tf_esp = (uint32_t) dststack;
-
-		env_run(curenv);
-		
 	}
+
+	// reference: inc/trap.h: 59 ~ 86
+	utf = (struct UTrapframe *) (exstack - sizeof(struct UTrapframe));
+	utf->utf_fault_va = fault_va;
+	utf->utf_err = tf->tf_err;
+	utf->utf_regs = tf->tf_regs;
+	utf->utf_eip = tf->tf_eip;
+	utf->utf_eflags = tf->tf_eflags;
+	utf->utf_esp = tf->tf_esp;
+
+	tf->tf_esp = (uintptr_t) exstack;
+	tf->tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
+
+	env_run(curenv);
+
+	panic("should not be here!\n");
+		
 userfault:
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 		curenv->env_id, fault_va, tf->tf_eip);
 	print_trapframe(tf);
-
-	user_mem_assert(curenv, (void*)fault_va, 1, PTE_U | PTE_P);
-
 	env_destroy(curenv);
 }
 

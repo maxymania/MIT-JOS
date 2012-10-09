@@ -182,8 +182,7 @@ mem_init(void)
 	boot_map_region(kern_pgdir, 
 		  UPAGES, 
 		  ROUNDUP((sizeof(struct Page) * npages), PGSIZE),
-		  PADDR(pages), 
-		  (PTE_U | PTE_P));
+		  PADDR(pages), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -195,8 +194,7 @@ mem_init(void)
 	boot_map_region(kern_pgdir, 
 		  UENVS, 
 		  ROUNDUP(env_size, PGSIZE),
-		  PADDR(envs), 
-		  (PTE_U | PTE_P));
+		  PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -209,12 +207,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	/* becase same range for percpu_kstacks[0] in mem_init_mp() so comment out this line */
-	/* boot_map_region(kern_pgdir, 
-		  (KSTACKTOP-KSTKSIZE), 
-		  KSTKSIZE,
-		  PADDR(bootstack), 
-		  (PTE_W | PTE_P)); */
+	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -226,9 +219,8 @@ mem_init(void)
 	// Your code goes here:
 	boot_map_region(kern_pgdir, 
 		  KERNBASE, 
-		  ROUNDUP((0xFFFFFFFF-KERNBASE), PGSIZE),
-		  0, 
-		  (PTE_W | PTE_P));
+		  IOMEMBASE-KERNBASE,
+		  0x0, PTE_W);
 
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
@@ -293,7 +285,7 @@ mem_init_mp(void)
 	for (n = 0; n < NCPU; n++) {
 		va = KSTACKTOP - (KSTKSIZE + KSTKGAP) * n - KSTKSIZE;
 		pa = PADDR(percpu_kstacks[n]);
-		boot_map_region(kern_pgdir, va, KSTKSIZE, pa, PTE_P|PTE_W);
+		boot_map_region(kern_pgdir, va, KSTKSIZE, pa, PTE_W);
 		// for debuging
 		// pte = pgdir_walk(kern_pgdir, (void *)va, 0);
 		// cprintf("va 0x%x, pa 0x%x\n", va, pa);
@@ -485,7 +477,10 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 
 	do {
 		pte = pgdir_walk(pgdir, (void *)va_next, 1); 
-		*pte |= (PTE_ADDR(pa_next) | perm);
+		if (!pte) {
+			return;
+		}
+		*pte = (PTE_ADDR(pa_next) | perm | PTE_P);
 		va_next += PGSIZE;
 		pa_next += PGSIZE;
 	} while(++i < np);
@@ -629,24 +624,19 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
 	pte_t *pte;
-	uint32_t count, i = 0, addr;
-	addr = ROUNDDOWN((uint32_t) va, PGSIZE);
-	count = (ROUNDUP((uint32_t) va + len-1, PGSIZE) - addr)/PGSIZE;
+	uint32_t addr = ROUNDDOWN((uint32_t) va, PGSIZE);
+	uint32_t end = ROUNDUP((uint32_t) va + len, PGSIZE);
 	perm |= PTE_P;
 
-	do {
-		addr += i*PGSIZE;
+	for (; addr < end; addr += PGSIZE) {
 		pte = pgdir_walk(env->env_pgdir, (void*) addr, 0); 
-		if (!pte) {
-			user_mem_check_addr = i ? addr : (uintptr_t) va;
-			return -E_FAULT;
-		}
-		if ((PGSIZE + addr) > ULIM
+		if (!pte
+	  	     || addr >= ULIM
 		     || ((*pte & perm) != perm) ) {
-			user_mem_check_addr = i ? addr : (uintptr_t) va;
+			user_mem_check_addr = addr < (uint32_t) va ? (uintptr_t) va : addr;
 			return -E_FAULT;
 		}
-	}while(++i < count);
+	}
 
 	return 0;
 }
@@ -732,6 +722,8 @@ check_page_free_list(bool only_low_memory)
 
 	assert(nfree_basemem > 0);
 	assert(nfree_extmem > 0);
+
+	cprintf("check_page_free_list() succeeded!\n");
 }
 
 //
