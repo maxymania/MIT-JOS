@@ -353,20 +353,26 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
-	if (!curenv->env_pgfault_upcall)
+	if (!curenv->env_pgfault_upcall) {
+		cprintf("[%08x] user fault by no env_pgfault_upcall\n", curenv->env_id);
 		goto userfault;
+	}
 
 	user_mem_assert(curenv,(void *)(UXSTACKTOP -4), 4, 0);
 
 	uintptr_t exstack;
 	struct UTrapframe *utf;
-
- 	if ( tf->tf_esp <= UXSTACKTOP-1 && tf->tf_esp >=  UXSTACKTOP - PGSIZE)
+	
+	// Figure out top where trapframe should end, leaving 1 word scratch space
+	if (tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp <= UXSTACKTOP-1) {
 		exstack = tf->tf_esp - 4; 
-	else
-		exstack = tf->tf_esp;
+	} else {
+		exstack = UXSTACKTOP;
+	}
 
+	// Check if enough space to copy trapframe
 	if ((exstack - sizeof(struct UTrapframe)) < UXSTACKTOP-PGSIZE) {
+		cprintf("[%08x] user fault by stack", curenv->env_id);
 		goto userfault;
 	}
 
@@ -379,7 +385,7 @@ page_fault_handler(struct Trapframe *tf)
 	utf->utf_eflags = tf->tf_eflags;
 	utf->utf_esp = tf->tf_esp;
 
-	tf->tf_esp = (uintptr_t) exstack;
+	tf->tf_esp = (uintptr_t) utf;
 	tf->tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
 
 	env_run(curenv);
