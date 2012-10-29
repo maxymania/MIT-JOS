@@ -29,6 +29,7 @@ e1000_attach(struct pci_func *pcif)
 	e1000 = (uint32_t *) E1000_MMIOADDR;
 
 	assert(e1000[E1000_STATUS] == 0x80080783);
+	cprintf("E1000 status: %08x\n", e1000[E1000_STATUS]);
 
 	// Initialize tx buffer array
 	memset(tx_desc_array, 0x0, sizeof(struct tx_desc) * E1000_TXDESC);
@@ -113,6 +114,32 @@ e1000_attach(struct pci_func *pcif)
 	return 0;
 }
 
+#if defined(HAVE_DUMP_E1000_PACKET)
+void
+hexdump(const char *prefix, const void *data, int len)
+{
+	int i;
+	char buf[80];
+	char *end = buf + sizeof(buf);
+	char *out = NULL;
+	for (i = 0; i < len; i++) {
+		if (i % 16 == 0)
+			out = buf + snprintf(buf, end - buf,
+					     "%s%04x   ", prefix, i);
+		out += snprintf(out, end - out, "%02x", ((uint8_t*)data)[i]);
+		if (i % 16 == 15 || i == len - 1)
+			cprintf("%.*s\n", out - buf, buf);
+		if (i % 2 == 1)
+			*(out++) = ' ';
+		if (i % 16 == 7)
+			*(out++) = ' ';
+	}
+}
+#define HEXDUMP(prefix, data, len) hexdump(prefix, data, len);
+#else
+#define HEXDUMP(prefix, data, len)
+#endif
+
 int
 e1000_transmit(char *data, int len)
 {
@@ -126,6 +153,9 @@ e1000_transmit(char *data, int len)
 	if (tx_desc_array[tdt].status & E1000_TXD_STAT_DD) {
 		memmove(tx_pkt_bufs[tdt].buf, data, len);
 		tx_desc_array[tdt].length = len;
+
+		//cprintf("E1000 tx len: %0dx\n", len);
+		HEXDUMP("tx dump:", data, len);
 
 		tx_desc_array[tdt].status &= ~E1000_TXD_STAT_DD;
 		tx_desc_array[tdt].cmd |= E1000_TXD_CMD_RS;
@@ -151,7 +181,10 @@ e1000_receive(char *data)
 			panic("Don't allow jumbo frames!\n");
 		}
 		len = rcv_desc_array[rdt].length;
+		
 		memmove(data, rcv_pkt_bufs[rdt].buf, len);
+		//cprintf("E1000 rx len: %0dx\n", len);
+		HEXDUMP("rx dump:", data, len);
 		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_DD;
 		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_EOP;
 		e1000[E1000_RDT] = (rdt + 1) % E1000_RCVDESC;
