@@ -176,7 +176,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 		return -E_INVAL;
 
 	e->env_pgfault_upcall = func;
-	cprintf("env_pgfault_upcall: %08x\n", func);
+	// cprintf("env_pgfault_upcall: %08x\n", func);
 	user_mem_assert(e, func, 4, 0);
 
 	return 0;
