@@ -71,39 +71,54 @@ static int
 duppage(envid_t envid, unsigned pn)
 {
 	int r;
+    envid_t cur_envid; 
+    pte_t pte = vpt[pn];
 
 	// LAB 4: Your code here.
-	unsigned va = (pn << PGSHIFT);
-	if (!(vpt[pn] & PTE_P)) 
+	unsigned va;
+	if (!(pte & PTE_P)) 
 		return -E_INVAL;
 
-	if (!((vpt[pn] & PTE_W) || (vpt[pn] & PTE_COW))) {
-		if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
-			PGOFF(vpt[pn]) )) < 0) {
-			panic("sys_page_map: error %e\n", r);
-		}
-	}
-		
-	if (pn >= PGNUM(UTOP) || va >= UTOP)
-		panic("page out of UTOP\n");
+    va = (pn << PGSHIFT);
 
-	if (!(vpt[pn] & PTE_U))
-		panic("page must user accessible\n");
-	
-	// change current env perm
-	if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
-		PTE_P | PTE_U | PTE_COW)) < 0)
-		panic("sys_page_map: error %e\n", r);
+    cur_envid = sys_getenvid();
+    if (pte & PTE_SHARE) {
+        void *pnsize = (void*)(pn * PGSIZE);
+        r = sys_page_map(cur_envid, pnsize, envid, pnsize,
+                pte & PTE_SYSCALL);
+        if (r < 0) {
+            return r;
+        }
 
-	// use syscall to change parent perm
-	if ((r = sys_page_map(0, (void *) va, 0, (void *) va,
-		PTE_P | PTE_U | PTE_COW)) < 0)
-		panic("sys_page_map: error %e\n", r);
+    } else {
+        if (!((pte & PTE_W) || (pte & PTE_COW))) {
+            if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
+                            PGOFF(pte) )) < 0) {
+                panic("sys_page_map: error %e\n", r);
+            }
+        }
 
-	if ((vpt[pn] & PTE_W) && (vpt[pn] & PTE_COW))
-		panic("duppage: should now set both PTE_W and PTE_COW\n");
+        if (pn >= PGNUM(UTOP) || va >= UTOP)
+            panic("page out of UTOP\n");
 
-	return 0;
+        if (!(pte & PTE_U))
+            panic("page must user accessible\n");
+
+        // change current env perm
+        if ((r = sys_page_map(cur_envid, (void *) va, envid, (void *) va,
+                        PTE_P | PTE_U | PTE_COW)) < 0)
+            panic("sys_page_map: error %e\n", r);
+
+        // use syscall to change parent perm
+        if ((r = sys_page_map(cur_envid, (void *) va, 0, (void *) va,
+                        PTE_P | PTE_U | PTE_COW)) < 0)
+            panic("sys_page_map: error %e\n", r);
+
+        if ((pte & PTE_W) && (pte & PTE_COW))
+            panic("duppage: should now set both PTE_W and PTE_COW\n");
+    }
+
+    return 0;
 }
 
 //
@@ -122,75 +137,75 @@ duppage(envid_t envid, unsigned pn)
 //   Neither user exception stack should ever be marked copy-on-write,
 //   so you must allocate a new page for the child's user exception stack.
 //
-envid_t
+    envid_t
 fork(void)
 {
-	// LAB 4: Your code here.
-	extern void _pgfault_upcall(void);
-	envid_t myenvid = sys_getenvid();
-	envid_t envid;
-	int r;
-	set_pgfault_handler(pgfault);
-	if ((envid = sys_exofork()) < 0) {
-		panic("sys_exofork: error %e\n", envid);
-	}
+    // LAB 4: Your code here.
+    extern void _pgfault_upcall(void);
+    envid_t myenvid = sys_getenvid();
+    envid_t envid;
+    int r;
+    set_pgfault_handler(pgfault);
+    if ((envid = sys_exofork()) < 0) {
+        panic("sys_exofork: error %e\n", envid);
+    }
 
-	if (envid == 0) { // child env
-		thisenv = &envs[ENVX(sys_getenvid())];
-		return 0;
-	}
+    if (envid == 0) { // child env
+        thisenv = &envs[ENVX(sys_getenvid())];
+        return 0;
+    }
 
-	int i,j,pn;
-	i=j=pn=0;
-	for (i = 0; i < PDX(UTOP); i++) {
-		if (vpd[i] & PTE_P) {
-			for (j = 0; j < NPTENTRIES; j++) {
-				pn = i* NPTENTRIES + j;
-				if (pn == PGNUM(UXSTACKTOP - PGSIZE)) {
-					break;
-				}
-				
-				if (vpt[pn] & PTE_P) {
-					duppage(envid, pn);
-				}
-			}
-		}
-	}
+    int i,j,pn;
+    i=j=pn=0;
+    for (i = 0; i < PDX(UTOP); i++) {
+        if (vpd[i] & PTE_P) {
+            for (j = 0; j < NPTENTRIES; j++) {
+                pn = i* NPTENTRIES + j;
+                if (pn == PGNUM(UXSTACKTOP - PGSIZE)) {
+                    break;
+                }
 
-	// Allocate new exception stack for child	
-	if ((r = sys_page_alloc(envid, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W)) < 0)
-		panic("sys_page_alloc: error %e\n", r);
+                if (vpt[pn] & PTE_P) {
+                    duppage(envid, pn);
+                }
+            }
+        }
+    }
 
-	// Map child uxstack to temp page 
-	if (sys_page_map(envid, (void *) (UXSTACKTOP - PGSIZE), myenvid, PFTEMP, 
-			PTE_U | PTE_P | PTE_W) < 0) {
-		return -1;
-	}
+    // Allocate new exception stack for child	
+    if ((r = sys_page_alloc(envid, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W)) < 0)
+        panic("sys_page_alloc: error %e\n", r);
 
-	// Copy own uxstack to temp page
-	memmove((void *)(UXSTACKTOP - PGSIZE), PFTEMP, PGSIZE);
+    // Map child uxstack to temp page 
+    if (sys_page_map(envid, (void *) (UXSTACKTOP - PGSIZE), myenvid, PFTEMP, 
+                PTE_U | PTE_P | PTE_W) < 0) {
+        return -1;
+    }
 
-	// Unmap temp page
-	if (sys_page_unmap(myenvid, PFTEMP) < 0) {
-		return -1;
-	}	
+    // Copy own uxstack to temp page
+    memmove((void *)(UXSTACKTOP - PGSIZE), PFTEMP, PGSIZE);
 
-	if ((r = sys_env_set_pgfault_upcall(envid, thisenv->env_pgfault_upcall)) < 0)
-		panic("sys_env_set_pgfault_upcall: error %e\n", r);
+    // Unmap temp page
+    if (sys_page_unmap(myenvid, PFTEMP) < 0) {
+        return -1;
+    }	
 
-	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0) {
-		cprintf("sys_env_set_status: error %e\n", r);
-		return -1;
-	}
+    if ((r = sys_env_set_pgfault_upcall(envid, thisenv->env_pgfault_upcall)) < 0)
+        panic("sys_env_set_pgfault_upcall: error %e\n", r);
+
+    if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0) {
+        cprintf("sys_env_set_status: error %e\n", r);
+        return -1;
+    }
 
 
-	return envid;
+    return envid;
 }
 
 // Challenge!
-int
+    int
 sfork(void)
 {
-	panic("sfork not implemented");
-	return -E_INVAL;
+    panic("sfork not implemented");
+    return -E_INVAL;
 }
