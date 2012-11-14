@@ -43,17 +43,21 @@ pgfault(struct UTrapframe *utf)
 	//   No need to explicitly delete the old page's mapping.
 
 	// LAB 4: Your code here.
+    envid_t envid = sys_getenvid();
+
 	void *tmpva = (void *) ROUNDDOWN((uint32_t) addr, PGSIZE);
-	if ((r = sys_page_alloc(0, (void *) PFTEMP, PTE_P|PTE_W|PTE_U)) < 0) {
+	if ((r = sys_page_alloc(envid, (void *) PFTEMP, PTE_P|PTE_W|PTE_U)) < 0) {
 		panic("sys_page_alloc: error %e\n", r);
 	}
 
 	memmove((void *)PFTEMP, tmpva, PGSIZE);
 
-	if ((r = sys_page_map(0, (void *)PFTEMP, 0, tmpva, 
+	if ((r = sys_page_map(envid, (void *)PFTEMP, envid, tmpva, 
 		PTE_P|PTE_W|PTE_U)) < 0)
 		panic("sys_page_map: error %e\n", r);
 
+	if (sys_page_unmap(envid, PFTEMP) < 0) 
+		panic("pgfault: couldn't unmap temp page.\n");
 }
 
 //
@@ -80,12 +84,12 @@ duppage(envid_t envid, unsigned pn)
 	if (!(pte & PTE_P)) 
 		return -E_INVAL;
 
-    va = (pn << PGSHIFT);
+    va = (pn * PGSIZE);
 
     cur_envid = sys_getenvid();
     if (pte & PTE_SHARE) {
-        void *pnsize = (void*)(pn * PGSIZE);
-        r = sys_page_map(cur_envid, pnsize, envid, pnsize,
+        r = sys_page_map(cur_envid, (void *) va,
+                envid, (void *) va,
                 pte & PTE_SYSCALL);
         if (r < 0) {
             return r;
@@ -97,23 +101,12 @@ duppage(envid_t envid, unsigned pn)
             perm |= PTE_COW;
         }
 
-        if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
+        if ((r = sys_page_map(cur_envid, (void *) va, envid, (void *) va,
                             perm)) < 0) {
-                panic("sys_page_map: error %e\n", r);
+                cprintf("sys_page_map: error %e\n", r);
+                return r;
         }
 
-        if (pn >= PGNUM(UTOP) || va >= UTOP)
-            panic("page out of UTOP\n");
-
-        if (!(pte & PTE_U))
-            panic("page must user accessible\n");
-
-        // change current env perm
-        if ((r = sys_page_map(cur_envid, (void *) va,
-                        envid, (void *) va, perm)) < 0)
-            panic("sys_page_map: error %e\n", r);
-
-        // use syscall to change parent perm
         if (perm & PTE_COW) {
             if ((r = sys_page_map(cur_envid, (void *) va, 0, (void *) va,
                             perm)) < 0)
