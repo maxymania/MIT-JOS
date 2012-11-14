@@ -73,6 +73,7 @@ duppage(envid_t envid, unsigned pn)
 	int r;
     envid_t cur_envid; 
     pte_t pte = vpt[pn];
+    int perm;
 
 	// LAB 4: Your code here.
 	unsigned va;
@@ -91,11 +92,14 @@ duppage(envid_t envid, unsigned pn)
         }
 
     } else {
-        if (!((pte & PTE_W) || (pte & PTE_COW))) {
-            if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
-                            PGOFF(pte) )) < 0) {
+        perm = PTE_U | PTE_P;
+        if ((pte & PTE_W) || (pte & PTE_COW)) {
+            perm |= PTE_COW;
+        }
+
+        if ((r = sys_page_map(0, (void *) va, envid, (void *) va,
+                            perm)) < 0) {
                 panic("sys_page_map: error %e\n", r);
-            }
         }
 
         if (pn >= PGNUM(UTOP) || va >= UTOP)
@@ -105,14 +109,16 @@ duppage(envid_t envid, unsigned pn)
             panic("page must user accessible\n");
 
         // change current env perm
-        if ((r = sys_page_map(cur_envid, (void *) va, envid, (void *) va,
-                        PTE_P | PTE_U | PTE_COW)) < 0)
+        if ((r = sys_page_map(cur_envid, (void *) va,
+                        envid, (void *) va, perm)) < 0)
             panic("sys_page_map: error %e\n", r);
 
         // use syscall to change parent perm
-        if ((r = sys_page_map(cur_envid, (void *) va, 0, (void *) va,
-                        PTE_P | PTE_U | PTE_COW)) < 0)
-            panic("sys_page_map: error %e\n", r);
+        if (perm & PTE_COW) {
+            if ((r = sys_page_map(cur_envid, (void *) va, 0, (void *) va,
+                            perm)) < 0)
+                panic("sys_page_map: error %e\n", r);
+        }
 
         if ((pte & PTE_W) && (pte & PTE_COW))
             panic("duppage: should now set both PTE_W and PTE_COW\n");
