@@ -6,6 +6,6 @@
 
 #include <inc/syscall.h>
 
-int32_t syscall(uint32_t num, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5);
+intptr_t syscall(uintptr_t num, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5);
 
 #endif /* !JOS_KERN_SYSCALL_H */

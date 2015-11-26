@@ -494,8 +494,8 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
-int32_t
-syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
+intptr_t
+syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
 {
 	// Call the function corresponding to the 'syscallno' parameter.
 	// Return any appropriate return value.
