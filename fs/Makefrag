@@ -26,6 +26,8 @@ USERAPPS :=		$(USERAPPS) \
 			$(OBJDIR)/user/primes \
 			$(OBJDIR)/user/primespipe \
 			$(OBJDIR)/user/sh \
+			$(OBJDIR)/user/spin \
+			$(OBJDIR)/user/yield \
 			$(OBJDIR)/user/testfdsharing \
 			$(OBJDIR)/user/testkbd \
 			$(OBJDIR)/user/testpipe \
