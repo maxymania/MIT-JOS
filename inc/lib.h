@@ -64,6 +64,7 @@ unsigned int sys_time_msec(void);
 int     sys_net_try_send(char *data, int len);
 int     sys_net_try_receive(char *data, int *len);
 int     sys_get_mac(uint32_t *low, uint32_t *high);
+int 	sys_pageref_compare(void *comp1,void *comp2,uint16_t *ref2p);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))

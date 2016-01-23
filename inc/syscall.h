@@ -21,6 +21,8 @@ enum {
 	SYS_net_try_send,
 	SYS_net_try_receive,
 	SYS_get_mac,
+	/* New System Calls. */
+	SYS_pageref_compare,
 	NSYSCALLS
 };
 

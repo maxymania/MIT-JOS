@@ -14,6 +14,8 @@
 #include <kern/time.h>
 #include <kern/e1000.h>
 
+#include <kern/security/security.h>
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -379,6 +381,9 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	if (e->env_ipc_recving == 0)
 		return -E_IPC_NOT_RECV;
 
+	if(!jos_security_ipc_maySend(curenv,e))
+		return -E_INVAL; // TODO: errno "No Permission" or "Permission denied"
+
 
 	if ((uint32_t) e->env_ipc_dstva < UTOP
          && (uint32_t) srcva < UTOP) { 
@@ -493,6 +498,39 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 		return r;
 }
 
+/*
+ * Comparison pageref(comp1)==pageref(comp2).
+ * 
+ * Simplified Pseudocode:
+ * if( ref2p!=NULL && valid(comp2) ) *ref2p = pageref(comp2);
+ * if( valid(comp1) && valid(comp2) ) return pageref(comp1)==pageref(comp2);
+ * if( valid(comp1) ) return pageref(comp1)==*ref2p;
+ * return 0;
+ */
+static int
+sys_pageref_compare(void *comp1,void *comp2,uint16_t *ref2p){
+	pte_t *pte;
+	struct Page *page;
+	uint16_t ref2 = 0;
+
+	if(!ref2p){
+		ref2p = &ref2;
+	}else{
+		user_mem_assert(curenv, ref2p, 2, PTE_U);
+	}
+	if ((uintptr_t) comp2 < UTOP) {
+		page = page_lookup(curenv->env_pgdir, comp2, &pte);
+		if(page)
+			*ref2p = page->pp_ref;
+	}
+	if ((uintptr_t) comp1 >= UTOP) return 0;
+	page = page_lookup(curenv->env_pgdir, comp1, &pte);
+	if(!page) return 0;
+	if(page->pp_ref!=*ref2p) return 0;
+	return 1;
+}
+
+
 // Dispatches to the correct kernel function, passing the arguments.
 intptr_t
 syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
@@ -543,6 +581,8 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
 		return sys_get_mac((uint32_t *) a1, (uint32_t *) a2);
 	case SYS_env_set_trapframe:
 		return sys_env_set_trapframe(a1, (struct Trapframe *) a2);
+	case SYS_pageref_compare:
+		return sys_pageref_compare((void*)a1,(void*)a2,(uint16_t*)a3);
 	default:
 		cprintf("Error syscall(%u)\n", syscallno);
 		panic("syscall not implemented");
